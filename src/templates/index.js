@@ -2,11 +2,7 @@
 const tabla = document.getElementById("tDatos");
 const formulario = document.getElementById("formulario");
 const botonesEditar = document.getElementsByClassName("edit");
-const inpIdLibro = document.getElementsByClassName("inpIdLibro");
-const inpNombre = document.getElementsByClassName("inpNombre");
-const inpIsbn = document.getElementsByClassName("inpIsbn");
-const inpCant = document.getElementsByClassName("inpCant");
-const inpPrestado = document.getElementsByClassName("inpPrestado");
+const botonesEliminar = document.getElementsByClassName("delete");
 
 //URL del EndPoint
 const urlDataAll = "http://localhost:5000/api/books/";
@@ -50,7 +46,9 @@ function mostrarDatos(data) {
     </td>
     <td>
       <div class="d-flex justify-content-center">
-        <a href="{{url_for('delete', id=d.idlibro)}}" class="btn btn-danger btn-sm">Eliminar</a>
+        <button class="btn btn-danger btn-sm delete">
+          Eliminar
+        </button>
       </div>
     </td>
   </tr>
@@ -96,6 +94,7 @@ function mostrarDatos(data) {
   tabla.innerHTML = table;
   //Ejecutamos esta funcion para que el event listener espere a que se creen los botones en el html
   cargarBotones();
+  capturarDatos();
 }
 
 function actualizarDatos() {
@@ -104,7 +103,7 @@ function actualizarDatos() {
   const isbn = document.getElementById("isbn").value;
   const cant = document.getElementById("cant").value;
   const borrowed = document.getElementById("borrowed").value;
-
+  // Actualizacion del registro en la base de datos
   fetch(`${urlDataAll}add`, {
     method: "POST",
     headers: {
@@ -126,20 +125,27 @@ function actualizarDatos() {
 }
 
 function editarDatos(id) {
-  // En la variable data se almacena el valor del identificador del libro
-  data = parseInt(inpIdLibro[id].value);
-  valor = data-1
-  fetch(`${urlDataAll}update/${data}`, {
+  const datos = capturarDatos();
+  //console.log(datos.inpPrestado[id].value);
+
+  // Reasigno los valores en variables para acceder mas fácil
+  let idlibro = datos.inpIdLibro[id].value;
+  let nombre = datos.inpNombre[id].value;
+  let isbn = datos.inpIsbn[id].value;
+  let cantidad = datos.inpCant[id].value;
+  let prestado = datos.inpPrestado[id].value;
+
+  fetch(`${urlDataAll}update/${idlibro}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json", // Establece el tipo de contenido a JSON
     },
     body: JSON.stringify({
-      idlibro: inpIdLibro[valor].value,
-      nombre: inpNombre[valor].value,
-      isbn: inpIsbn[valor].value,
-      cantidad: inpCant[valor].value,
-      prestado: inpPrestado[valor].value,
+      idlibro: parseInt(idlibro),
+      nombre: nombre,
+      isbn: isbn,
+      cantidad: parseInt(cantidad),
+      prestado: prestado,
     }),
   })
     .then(function (response) {
@@ -148,10 +154,72 @@ function editarDatos(id) {
     .then(function (dato) {
       console.log(dato);
     });
+  Swal.fire({
+    title: "Edición Exitosa",
+    text: "Datos actualizados!",
+    icon: "success",
+  }).then(() => {
+    window.location.reload();
+  });
 }
 
-function eliminarDatos() {
-  
+function eliminarDatos(id) {
+  const datos = capturarDatos();
+  //console.log(datos.inpIdLibro[id].value);
+
+  // Reasigno los valores en variables para acceder mas fácil
+  let idlibro = datos.inpIdLibro[id].value;
+
+  // Ejecutamos SweetAlert2 para ayudar con la confirmación de la acción de borrado
+  const swalWithBootstrapButtons = Swal.mixin({
+    customClass: {
+      confirmButton: "btn btn-success",
+      cancelButton: "btn btn-danger",
+    },
+    buttonsStyling: false,
+  });
+  swalWithBootstrapButtons
+    .fire({
+      title: "¿Está seguro?",
+      text: "Esta acción no se puede revertir!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Si, borrar!",
+      cancelButtonText: "No, cancelar!",
+      reverseButtons: true,
+    })
+    .then((result) => {
+      if (result.isConfirmed) {
+        //Si se confirma la acción se ejecuta el fetch
+        fetch(`${urlDataAll}delete/${idlibro}`, {
+          method: "DELETE",
+        })
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (dato) {
+            console.log(dato);
+          });
+        swalWithBootstrapButtons
+          .fire({
+            title: "Eliminado!",
+            text: "El elemento ha sido eliminado!",
+            icon: "success",
+          })
+          .then(() => {
+            window.location.reload();
+          });
+      } else if (
+        /* Read more about handling dismissals below */
+        result.dismiss === Swal.DismissReason.cancel
+      ) {
+        swalWithBootstrapButtons.fire({
+          title: "Cancelled",
+          text: "Your imaginary file is safe :)",
+          icon: "error",
+        });
+      }
+    });
 }
 
 function cargarBotones() {
@@ -159,7 +227,20 @@ function cargarBotones() {
     botonesEditar[j].addEventListener("click", function () {
       editarDatos(j);
     });
+    botonesEliminar[j].addEventListener("click", function () {
+      eliminarDatos(j);
+    });
   }
+}
+
+function capturarDatos() {
+  // Capturar los datos para editarlos
+  const inpIdLibro = document.getElementsByClassName("inpIdLibro");
+  const inpNombre = document.getElementsByClassName("inpNombre");
+  const inpIsbn = document.getElementsByClassName("inpIsbn");
+  const inpCant = document.getElementsByClassName("inpCant");
+  const inpPrestado = document.getElementsByClassName("inpPrestado");
+  return { inpIdLibro, inpNombre, inpIsbn, inpCant, inpPrestado };
 }
 
 formulario.addEventListener("submit", function (e) {
